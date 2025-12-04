@@ -1,0 +1,67 @@
+(function() {
+var el = document.createElement('script');
+el.src = 'https://app.ablecdp.com/ue.js';
+el.async = 'true';
+window.uipeParams = {};el.addEventListener('load', function() {
+uipe('init', '692fb3d4-ac32-458f-8c5f-ce34aef463f7');
+uipe('track', 'PageView');
+(function() {
+
+function processStripeLinks() {
+    let stripeLinks = document.querySelectorAll('a[href^="https://buy.stripe.com"], a[href*="/b/"]');
+    stripeLinks = Array.from(stripeLinks).filter(link => {
+        return link.href.startsWith('https://buy.stripe.com') || /\/b\/[A-Za-z0-9]{18}($|\?)/.test(link.href);
+    });
+    const stripePricingTables = document.querySelectorAll('stripe-pricing-table');
+    let uuid;
+
+    if (stripeLinks.length === 0 && stripePricingTables.length === 0) {
+        return null;
+    }
+
+    for (const link of stripeLinks) {
+        const url = new URL(link.href);
+        const clientReferenceId = url.searchParams.get('client_reference_id');
+        
+        if (clientReferenceId) {
+            return clientReferenceId;
+        }
+    }
+
+    for (const spt of stripePricingTables) {
+        const clientReferenceId = spt.getAttribute('client-reference-id');
+        
+        if (clientReferenceId) {
+            return clientReferenceId;
+        }
+    }
+
+    uuid = localStorage.getItem('stripe_client_reference_id');
+    if (!uuid) {
+        uuid = crypto.randomUUID();
+        localStorage.setItem('stripe_client_reference_id', uuid);
+    }
+    
+    for (const link of stripeLinks) {
+        const url = new URL(link.href);
+        url.searchParams.set('client_reference_id', uuid);
+        link.href = url.toString();
+    }
+
+    for (const spt of stripePricingTables) {
+        spt.setAttribute('client-reference-id', uuid);
+    }
+
+    return uuid;
+}
+
+const stripeClientRef = processStripeLinks();
+if (stripeClientRef)
+  window.uipe('track', 'PaymentLinkShown', { keys: { client_id: stripeClientRef } });
+
+})();
+
+
+});
+document.head.appendChild(el);
+})();
